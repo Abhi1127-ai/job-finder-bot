@@ -25,6 +25,13 @@ public class LinkedInScraper {
             Page page = context.newPage();
             page.navigate("https://www.linkedin.com/jobs/search/?keywords=" + jobTitle);
 
+            page.evaluate("async () => {" +
+                    "  for (int i = 0; i < 5; i++) {" +
+                    "    window.scrollBy(0, 500);" +
+                    "    await new Promise(r => setTimeout(r, 1000));" +
+                    "  }" +
+                    "}");
+
             page.waitForSelector(".job-card-container");
             Locator jobCards = page.locator(".job-card-container");
 
@@ -33,8 +40,13 @@ public class LinkedInScraper {
                     Locator card = jobCards.nth(i);
                     String title = card.locator(".job-card-list__title").innerText();
 
+                    simulateMouseMovement(page);
                     card.click();
                     page.waitForSelector(".jobs-description-content__text");
+
+                    humanDelay(page , 2000 , 4500);
+
+                    humanScroll(page);
 
                     String description = page.locator(".jobs-description-content__text").innerText();
                     String company = page.locator(".jobs-description-content__company").innerText();
@@ -52,5 +64,28 @@ public class LinkedInScraper {
             log.error("Scraper failed", e);
         }
         return jobs;
+    }
+
+    private void humanDelay(Page page , int minMillis , int maxMillis){
+        int delay = (int) (Math.random() * (maxMillis - minMillis)) + minMillis;
+        page.waitForTimeout(delay);
+    }
+
+    private void simulateMouseMovement(Page page){
+        double x = Math.random() * 1280;
+        double y = Math.random() * 720;
+        page.mouse().move(x, y , new Mouse.MoveOptions().setSteps(10));
+    }
+
+    private void humanScroll(Page page){
+        System.out.println("Simulating human scroll to load more jobs....");
+
+        int scrollSteps = (int) (Math.random() * 3) + 3;
+
+        for( int i = 0 ; i < scrollSteps ; i++){
+            int distance = (int) (Math.random() * 400) + 300;
+            page.evaluate("window.scrollBy(0, " + distance + ")");
+            humanDelay(page , 1000 , 2500);
+        }
     }
 }

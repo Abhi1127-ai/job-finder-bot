@@ -4,10 +4,8 @@ import com.Abhi.job_finder.dto.JobHuntRequest;
 import com.Abhi.job_finder.model.Job;
 import com.Abhi.job_finder.service.ai.JobMatchService;
 import com.Abhi.job_finder.service.scraper.ScraperService;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 

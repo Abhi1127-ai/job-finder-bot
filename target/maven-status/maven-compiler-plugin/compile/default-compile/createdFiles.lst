@@ -1,2 +1,12 @@
-com\Abhi\job_finder\config\Ai_Config.class
+com\Abhi\job_finder\service\automation\JobBotScheduler.class
+com\Abhi\job_finder\service\notification\TelegramNotificationService.class
 com\Abhi\job_finder\JobFinderApplication.class
+com\Abhi\job_finder\controller\JobController.class
+com\Abhi\job_finder\service\scraper\LinkedInScraper.class
+com\Abhi\job_finder\repository\JobRepository.class
+com\Abhi\job_finder\config\Ai_Config.class
+com\Abhi\job_finder\dto\JobHuntRequest.class
+com\Abhi\job_finder\service\ai\JobDiscoveryService.class
+com\Abhi\job_finder\service\ai\JobMatchService.class
+com\Abhi\job_finder\service\scraper\ScraperService.class
+com\Abhi\job_finder\model\Job.class

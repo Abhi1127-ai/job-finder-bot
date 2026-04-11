@@ -1,7 +1,7 @@
 package com.Abhi.job_finder.dto;
-import lombok.Data;
+
 import jakarta.validation.constraints.NotBlank;
-@Data
+
 public class JobHuntRequest {
 
     @NotBlank
@@ -10,4 +10,19 @@ public class JobHuntRequest {
     @NotBlank
     private String resume;
 
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getResume() {
+        return resume;
+    }
+
+    public void setResume(String resume) {
+        this.resume = resume;
+    }
 }

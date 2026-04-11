@@ -25,7 +25,7 @@ public class JobController {
     }
 
     @PostMapping("/hunt")
-    public ResponseEntity<String> runJobHunt(@Valid @RequestBody JobHuntRequest request){
+    public ResponseEntity<String> runJobHunt(@RequestBody JobHuntRequest request){
         String title = request.getTitle();
         String resume = request.getResume();
         CompletableFuture.runAsync(() -> scraperService.runJobHunt(title,resume)) ;

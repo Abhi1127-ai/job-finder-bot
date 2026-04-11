@@ -96,6 +96,4 @@ public class ScraperService {
     private boolean isHighMatch(String analysis) {
         return analysis.matches("(?s).*Match score.*(8|9|10).*");
     }
-
-
 }

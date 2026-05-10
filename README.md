@@ -46,7 +46,7 @@ It works 24/7, scraping live data, evaluating it against your resume using AI, a
 * Enables smart queries like:
 
     * *“Find jobs involving Microservices and AWS”*
-* Works even without exact keyword match
+* Works even without exact keyword match 
 ---
 ## System Architecture
 

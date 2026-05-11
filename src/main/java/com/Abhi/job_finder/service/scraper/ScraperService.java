@@ -72,6 +72,17 @@ public class ScraperService {
 
             try {
                 String analysis = jobMatchService.analyzeJob(job.getDescription(), myResume);
+                int score = parseScore(analysis);
+                log.info("Job: {} | Score: {}", job.getTitle(), score);
+
+                if (score >= MATCH_THRESHOLD) {
+                    persistAndNotify(job, analysis, score);
+                } else {
+                    // Still save it even if score is low
+                    job.setScrapedAt(LocalDateTime.now());
+                    jobRepository.save(job);
+                    log.info("Saved (low match {}): {}", score, job.getTitle());
+                }
             } catch (Exception e) {
                 String msg = e.getMessage();
                 if (msg != null && msg.contains("GenerateRequestsPerDayPerProjectPerModel")) {

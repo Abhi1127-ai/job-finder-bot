@@ -14,7 +14,7 @@ public class JobBotScheduler {
         this.scraperService = scraperService;
     }
 
-    @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Kolkata")
+    @Scheduled(cron = "0 0 9 * * *")
     public void runDailyJobHunt(){
         System.out.println("Automation triggered : Started Daily Linkedin Job Hunt at " + LocalDateTime.now());
 

@@ -1,0 +1,82 @@
+.auth-screen {
+    min-height: 100vh;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.auth-card {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 380px;
+}
+
+.auth-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.auth-logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--blue-600);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-logo-icon i { color: #fff; font-size: 20px; }
+.auth-logo-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.auth-logo-sub  { font-size: 12px; color: var(--text-secondary); }
+
+.auth-title { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.auth-desc  { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+.auth-error {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--red-50);
+    color: var(--red-600);
+    border: 0.5px solid #f5c2c2;
+    border-radius: var(--radius-md);
+    padding: 9px 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+.auth-error i { font-size: 15px; flex-shrink: 0; }
+
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+
+.auth-submit {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.auth-switch {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 20px;
+}
+.auth-switch a { color: var(--blue-600); font-weight: 500; }
+.auth-switch a:hover { text-decoration: underline; }
+
+.spinner-sm {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}

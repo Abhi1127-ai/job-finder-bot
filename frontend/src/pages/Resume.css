@@ -1,0 +1,91 @@
+.resume-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 860px) { .resume-layout { grid-template-columns: 1fr; } }
+
+.resume-editor-card { display: flex; flex-direction: column; }
+
+.resume-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.char-count {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: var(--bg-secondary);
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+
+.resume-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.15s;
+    min-height: 320px;
+}
+.resume-textarea:focus { border-color: var(--blue-400); background: var(--bg-primary); }
+.resume-textarea::placeholder { color: var(--text-tertiary); font-size: 12px; }
+
+.resume-tips { display: flex; flex-direction: column; gap: 14px; }
+
+.tip-list { display: flex; flex-direction: column; gap: 12px; }
+
+.tip-item { display: flex; align-items: flex-start; gap: 10px; }
+
+.tip-icon {
+    width: 22px; height: 22px;
+    background: var(--green-50);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.tip-icon i { font-size: 12px; color: var(--green-600); }
+.tip-icon.ti-warning { background: var(--amber-50); }
+.tip-icon.ti-warning i { color: var(--amber-600); }
+
+.tip-title { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+.tip-desc  { font-size: 11px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
+
+.resume-length-indicator {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-top: 4px;
+}
+
+.rli-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+.rli-ok   { color: var(--green-600); font-weight: 500; }
+.rli-over { color: var(--red-600);   font-weight: 500; }
+
+.rli-bar {
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.rli-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.rli-sub  { font-size: 10px; color: var(--text-tertiary); }

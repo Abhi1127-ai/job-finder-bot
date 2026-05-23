@@ -27,6 +27,7 @@ public class ScraperService {
     private static final Pattern SCORE_PATTERN =
             Pattern.compile("(?i)match\\s*score\\s*[:\\-]?\\s*(\\d+)");
 
+    private final InternshalaScaper internshalaScaper;
     private final JobRepository jobRepository;
     private final LinkedInScraper linkedInScraper;
     private final JobMatchService jobMatchService;
@@ -34,12 +35,14 @@ public class ScraperService {
     private final TelegramNotificationService telegramService;
 
     public ScraperService(
+            InternshalaScaper internshalaScaper,
             LinkedInScraper linkedInScraper,
             JobMatchService jobMatchService,
             VectorStore vectorStore,
             JobRepository jobRepository,
             TelegramNotificationService telegramService) {
 
+        this.internshalaScaper = internshalaScaper;
         this.linkedInScraper  = linkedInScraper;
         this.jobMatchService  = jobMatchService;
         this.vectorStore      = vectorStore;
@@ -50,6 +53,10 @@ public class ScraperService {
     public void runJobHunt(String jobTitle, String myResume) {
         List<Job> rawJobs = linkedInScraper.scrapejobs(jobTitle);
         log.info("Scraper returned {} jobs for '{}'", rawJobs.size(), jobTitle);
+
+        List<Job> allJobs =internshalaScaper.scrapeJobs(jobTitle);
+
+        log.info("Total jobs from all platforms: {}", allJobs.size(),jobTitle);
 
         int processed = 0;
 

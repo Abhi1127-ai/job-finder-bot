@@ -29,5 +29,8 @@ public class Job {
     private String mode = "Remote";
     private String analysis;
     private String company;
+    private String source = "LinkedIn"; // LinkedIn, Internshala, Unstop
+//    private String source = "Internshala";
+//    private String source = "Unstop";
 
 }

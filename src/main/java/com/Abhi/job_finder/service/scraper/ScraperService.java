@@ -33,6 +33,7 @@ public class ScraperService {
     private final JobMatchService jobMatchService;
     private final VectorStore vectorStore;
     private final TelegramNotificationService telegramService;
+    private final UnstopScraper unstopScraper;
 
     public ScraperService(
             InternshalaScaper internshalaScaper,
@@ -40,7 +41,8 @@ public class ScraperService {
             JobMatchService jobMatchService,
             VectorStore vectorStore,
             JobRepository jobRepository,
-            TelegramNotificationService telegramService) {
+            TelegramNotificationService telegramService,
+            UnstopScraper unstopScraper) {
 
         this.internshalaScaper = internshalaScaper;
         this.linkedInScraper  = linkedInScraper;
@@ -48,33 +50,43 @@ public class ScraperService {
         this.vectorStore      = vectorStore;
         this.jobRepository    = jobRepository;
         this.telegramService  = telegramService;
+        this.unstopScraper    = unstopScraper;
     }
 
     public void runJobHunt(String jobTitle, String myResume) {
         List<Job> rawJobs = linkedInScraper.scrapejobs(jobTitle);
         log.info("Scraper returned {} jobs for '{}'", rawJobs.size(), jobTitle);
 
-        List<Job> allJobs =internshalaScaper.scrapeJobs(jobTitle);
+        try {
+            List<Job> internshalaJobs = internshalaScaper.scrapeJobs(jobTitle);
+            log.info("Internshala: {} jobs", internshalaJobs.size());
+            allJobs.addAll(internshalaJobs);
+        } catch (Exception e) {
+            log.error("Internshala scraper failed: {}", e.getMessage());
+        }
 
-        log.info("Total jobs from all platforms: {}", allJobs.size(),jobTitle);
+        try {
+            List<Job> unstopJobs = unstopScraper.scrapeJobs(jobTitle);
+            log.info("Unstop: {} jobs", unstopJobs.size());
+            allJobs.addAll(unstopJobs);
+        } catch (Exception e) {
+            log.error("Unstop scraper failed: {}", e.getMessage());
+        }
+
 
         int processed = 0;
 
         for (Job job : rawJobs) {
 
-            // ── Skip empty descriptions ──────────────────────────────────────
             if (job.getDescription() == null || job.getDescription().isBlank()) {
                 log.warn("Skipping job with no description: {}", job.getUrl());
                 continue;
             }
 
-            // ── Skip already-seen URLs ────────────────────────────────────────
             if (jobRepository.findByUrl(job.getUrl()).isPresent()) {
                 log.info("Duplicate — skipping: {}", job.getUrl());
                 continue;
             }
-
-            // ── Rate-limit: pause before every AI call (except the first) ─────
             if (processed > 0) sleep(AI_CALL_DELAY_MS);
 
             try {
@@ -85,7 +97,6 @@ public class ScraperService {
                 if (score >= MATCH_THRESHOLD) {
                     persistAndNotify(job, analysis, score);
                 } else {
-                    // Still save it even if score is low
                     job.setScrapedAt(LocalDateTime.now());
                     jobRepository.save(job);
                     log.info("Saved (low match {}): {}", score, job.getTitle());
@@ -104,8 +115,6 @@ public class ScraperService {
 
         log.info("Job hunt complete. Processed {} / {} jobs.", processed, rawJobs.size());
     }
-
-    // ── private helpers ────────────────────────────────────────────────────────
 
     private void persistAndNotify(Job job, String analysis, int score) {
         try {

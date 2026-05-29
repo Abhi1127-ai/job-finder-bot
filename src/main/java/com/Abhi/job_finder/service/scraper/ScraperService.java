@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -23,7 +24,6 @@ public class ScraperService {
     private static final int AI_CALL_DELAY_MS = 35_000;
     private static final int MATCH_THRESHOLD = 8;
 
-    // Matches "Match score: 9", "Match Score : 10/10", "score 8" etc. (case-insensitive)
     private static final Pattern SCORE_PATTERN =
             Pattern.compile("(?i)match\\s*score\\s*[:\\-]?\\s*(\\d+)");
 
@@ -45,17 +45,26 @@ public class ScraperService {
             UnstopScraper unstopScraper) {
 
         this.internshalaScaper = internshalaScaper;
-        this.linkedInScraper  = linkedInScraper;
-        this.jobMatchService  = jobMatchService;
-        this.vectorStore      = vectorStore;
-        this.jobRepository    = jobRepository;
-        this.telegramService  = telegramService;
-        this.unstopScraper    = unstopScraper;
+        this.linkedInScraper   = linkedInScraper;
+        this.jobMatchService   = jobMatchService;
+        this.vectorStore       = vectorStore;
+        this.jobRepository     = jobRepository;
+        this.telegramService   = telegramService;
+        this.unstopScraper     = unstopScraper;
     }
 
     public void runJobHunt(String jobTitle, String myResume) {
-        List<Job> rawJobs = linkedInScraper.scrapejobs(jobTitle);
-        log.info("Scraper returned {} jobs for '{}'", rawJobs.size(), jobTitle);
+
+        // ── Collect jobs from all platforms ──────────────────────────────
+        List<Job> allJobs = new ArrayList<>();
+
+        try {
+            List<Job> linkedInJobs = linkedInScraper.scrapejobs(jobTitle);
+            log.info("LinkedIn: {} jobs", linkedInJobs.size());
+            allJobs.addAll(linkedInJobs);
+        } catch (Exception e) {
+            log.error("LinkedIn scraper failed: {}", e.getMessage());
+        }
 
         try {
             List<Job> internshalaJobs = internshalaScaper.scrapeJobs(jobTitle);
@@ -73,10 +82,12 @@ public class ScraperService {
             log.error("Unstop scraper failed: {}", e.getMessage());
         }
 
+        log.info("Total jobs from all platforms: {}", allJobs.size());
 
+        // ── Process each job ──────────────────────────────────────────────
         int processed = 0;
 
-        for (Job job : rawJobs) {
+        for (Job job : allJobs) {
 
             if (job.getDescription() == null || job.getDescription().isBlank()) {
                 log.warn("Skipping job with no description: {}", job.getUrl());
@@ -87,12 +98,14 @@ public class ScraperService {
                 log.info("Duplicate — skipping: {}", job.getUrl());
                 continue;
             }
+
             if (processed > 0) sleep(AI_CALL_DELAY_MS);
 
             try {
                 String analysis = jobMatchService.analyzeJob(job.getDescription(), myResume);
                 int score = parseScore(analysis);
-                log.info("Job: {} | Score: {}", job.getTitle(), score);
+                log.info("Job: {} | Platform: {} | Score: {}",
+                        job.getTitle(), job.getSource(), score);
 
                 if (score >= MATCH_THRESHOLD) {
                     persistAndNotify(job, analysis, score);
@@ -104,7 +117,7 @@ public class ScraperService {
             } catch (Exception e) {
                 String msg = e.getMessage();
                 if (msg != null && msg.contains("GenerateRequestsPerDayPerProjectPerModel")) {
-                    log.error("Daily Gemini quota exhausted — stopping job hunt until quota resets.");
+                    log.error("Daily quota exhausted — stopping job hunt.");
                     break;
                 }
                 log.error("AI analysis failed for job: {} — {}", job.getUrl(), msg);
@@ -113,12 +126,15 @@ public class ScraperService {
             processed++;
         }
 
-        log.info("Job hunt complete. Processed {} / {} jobs.", processed, rawJobs.size());
+        log.info("Job hunt complete. Processed {} / {} jobs.", processed, allJobs.size());
     }
 
     private void persistAndNotify(Job job, String analysis, int score) {
         try {
             job.setScrapedAt(LocalDateTime.now());
+            job.setScore(score);
+            job.setAnalysis(analysis);
+            job.setAlerted(true);
             jobRepository.save(job);
 
             String content = job.getTitle() + "\n" + job.getDescription();
@@ -128,48 +144,40 @@ public class ScraperService {
                             "title",    job.getTitle(),
                             "url",      job.getUrl(),
                             "analysis", analysis,
-                            "score",    String.valueOf(score)
+                            "score",    String.valueOf(score),
+                            "source",   job.getSource() != null ? job.getSource() : "LinkedIn"
                     )
             );
             vectorStore.add(List.of(doc));
 
             telegramService.sendjobAlert(
                     job.getTitle(),
-                    "LinkedIn",
+                    job.getSource() != null ? job.getSource() : "LinkedIn",
                     String.valueOf(score),
                     job.getUrl()
             );
 
-            log.info("Saved and notified: {} (score {})", job.getTitle(), score);
+            log.info("Saved and notified: {} (score {}) from {}",
+                    job.getTitle(), score, job.getSource());
 
         } catch (Exception e) {
             log.error("Failed to persist/notify job '{}': {}", job.getTitle(), e.getMessage());
         }
     }
 
-    /**
-     * Parse the numeric match score from Gemini's response.
-     * Returns 0 if the response is unparseable so the job is safely skipped.
-     */
     private int parseScore(String analysis) {
         if (analysis == null || analysis.isBlank()) return 0;
-
         Matcher m = SCORE_PATTERN.matcher(analysis);
         if (m.find()) {
-            try {
-                return Integer.parseInt(m.group(1));
-            } catch (NumberFormatException ignored) {}
+            try { return Integer.parseInt(m.group(1)); }
+            catch (NumberFormatException ignored) {}
         }
-
         log.warn("Could not parse score from analysis: {}", analysis);
         return 0;
     }
 
     private void sleep(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        try { Thread.sleep(millis); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); }
     }
 }

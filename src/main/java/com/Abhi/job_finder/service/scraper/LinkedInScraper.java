@@ -30,6 +30,7 @@ public class LinkedInScraper {
             ".jobs-description-content__text"
     };
 
+
     public List<Job> scrapejobs(String jobTitle) {
         List<Job> jobs = new ArrayList<>();
         Path sessionPath = Paths.get("playwright-session");

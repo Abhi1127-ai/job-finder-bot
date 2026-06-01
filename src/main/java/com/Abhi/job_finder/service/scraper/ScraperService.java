@@ -55,7 +55,6 @@ public class ScraperService {
 
     public void runJobHunt(String jobTitle, String myResume) {
 
-        // ── Collect jobs from all platforms ──────────────────────────────
         List<Job> allJobs = new ArrayList<>();
 
         try {
@@ -83,8 +82,6 @@ public class ScraperService {
         }
 
         log.info("Total jobs from all platforms: {}", allJobs.size());
-
-        // ── Process each job ──────────────────────────────────────────────
         int processed = 0;
 
         for (Job job : allJobs) {
@@ -122,7 +119,6 @@ public class ScraperService {
                 }
                 log.error("AI analysis failed for job: {} — {}", job.getUrl(), msg);
             }
-
             processed++;
         }
 
@@ -160,6 +156,8 @@ public class ScraperService {
             log.info("Saved and notified: {} (score {}) from {}",
                     job.getTitle(), score, job.getSource());
 
+            persistAndNotify(job, analysis, score, telegramChatId);
+
         } catch (Exception e) {
             log.error("Failed to persist/notify job '{}': {}", job.getTitle(), e.getMessage());
         }
@@ -179,5 +177,40 @@ public class ScraperService {
     private void sleep(int millis) {
         try { Thread.sleep(millis); }
         catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+    }
+
+    private void persistAndNotify(Job job, String analysis,
+                                  int score, String telegramChatId) {
+        try {
+            job.setScrapedAt(LocalDateTime.now());
+            job.setScore(score);
+            job.setAnalysis(analysis);
+            job.setAlerted(true);
+            jobRepository.save(job);
+
+            String content = job.getTitle() + "\n" + job.getDescription();
+            Document doc = new Document(content, Map.of(
+                    "title", job.getTitle(),
+                    "url", job.getUrl(),
+                    "analysis", analysis,
+                    "score", String.valueOf(score),
+                    "source", job.getSource() != null ? job.getSource() : "LinkedIn"
+            ));
+            vectorStore.add(List.of(doc));
+
+            telegramService.sendjobAlert(
+                    job.getTitle(),
+                    job.getSource() != null ? job.getSource() : "LinkedIn",
+                    String.valueOf(score),
+                    job.getUrl(),
+                    telegramChatId
+            );
+
+            log.info("✅ Saved and notified: {} (score {}) → channel {}",
+                    job.getTitle(), score, telegramChatId);
+
+        } catch (Exception e) {
+            log.error("Failed to persist/notify job '{}': {}", job.getTitle(), e.getMessage());
+        }
     }
 }

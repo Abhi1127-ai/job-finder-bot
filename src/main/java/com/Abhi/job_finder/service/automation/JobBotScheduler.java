@@ -1,31 +1,48 @@
 package com.Abhi.job_finder.service.automation;
 
+import com.Abhi.job_finder.config.JobDomain;
+import com.Abhi.job_finder.config.JobDomainsConfig;
 import com.Abhi.job_finder.service.scraper.ScraperService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import java.time.LocalDateTime;
+import org.springframework.stereotype.Service;
 
-@Component
+@Service
 public class JobBotScheduler {
 
-    private final ScraperService scraperService;
+    private static final Logger log = LoggerFactory.getLogger(JobBotScheduler.class);
 
-    public JobBotScheduler(ScraperService scraperService) {
+    private final ScraperService scraperService;
+    private final JobDomainsConfig domainsConfig;
+
+    private static final String MY_RESUME =
+            "Expert Java Spring Boot developer with experience in databases " +
+                    "(MySQL, MongoDB), Playwright, microservices, and AI integration.";
+
+    public JobBotScheduler(ScraperService scraperService,
+                           JobDomainsConfig domainsConfig) {
         this.scraperService = scraperService;
+        this.domainsConfig  = domainsConfig;
     }
 
     @Scheduled(cron = "0 0 9 * * *")
-    public void runDailyJobHunt(){
-        System.out.println("Automation triggered : Started Daily Linkedin Job Hunt at " + LocalDateTime.now());
+    public void runDailyJobHunt() {
+        log.info("=== Daily Job Hunt Started at {} ===", java.time.LocalDateTime.now());
 
-        String myResume = "Expert Java Spring Boot developer with experience databases(mysql , MongoDb) playwright, microservices , and AI integration...";
-        String targetRole = "java Full Stack Developer";
+        for (JobDomain domain : domainsConfig.getDomains()) {
+            log.info("--- Hunting for: {} ---", domain.getTitle());
+            try {
+                scraperService.runJobHunt(
+                        domain.getTitle(),
+                        MY_RESUME,
+                        domain.getTelegramChatId()
+                );
+            } catch (Exception e) {
+                log.error("Domain '{}' failed: {}", domain.getTitle(), e.getMessage());
+            }
+        }
 
-        scraperService.runJobHunt(targetRole, myResume);
-    }
-
-    @Scheduled(cron = "0 0 11,13,15 * * *")
-    public void runQuickCheck(){
-        System.out.println("Running mid-day quick check for new roles...");
+        log.info("=== Daily Job Hunt Complete ===");
     }
 }

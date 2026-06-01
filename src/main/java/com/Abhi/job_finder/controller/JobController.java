@@ -21,7 +21,6 @@ public class JobController {
     private final JobMatchService jobMatchService;
     private final JobRepository jobRepository;
 
-
     public JobController(ScraperService scrapperService, JobMatchService jobMatchService, JobRepository jobRepository) {
         this.scraperService = scrapperService;
         this.jobMatchService = jobMatchService;

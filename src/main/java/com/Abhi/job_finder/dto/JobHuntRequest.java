@@ -10,6 +10,8 @@ public class JobHuntRequest {
     @NotBlank
     private String resume;
 
+    private String telegramChatId;
+
     public String getTitle() {
         return title;
     }
@@ -24,5 +26,13 @@ public class JobHuntRequest {
 
     public void setResume(String resume) {
         this.resume = resume;
+    }
+
+    public String getTelegramChatId() {
+        return telegramChatId;
+    }
+
+    public void setTelegramChatId(String telegramChatId) {
+        this.telegramChatId = telegramChatId;
     }
 }

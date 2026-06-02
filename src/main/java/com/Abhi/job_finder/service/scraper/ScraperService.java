@@ -53,7 +53,7 @@ public class ScraperService {
         this.unstopScraper     = unstopScraper;
     }
 
-    public void runJobHunt(String jobTitle, String myResume) {
+    public void runJobHunt(String jobTitle, String myResume, String telegramChatId) {
 
         List<Job> allJobs = new ArrayList<>();
 
@@ -85,17 +85,14 @@ public class ScraperService {
         int processed = 0;
 
         for (Job job : allJobs) {
-
             if (job.getDescription() == null || job.getDescription().isBlank()) {
                 log.warn("Skipping job with no description: {}", job.getUrl());
                 continue;
             }
-
             if (jobRepository.findByUrl(job.getUrl()).isPresent()) {
                 log.info("Duplicate — skipping: {}", job.getUrl());
                 continue;
             }
-
             if (processed > 0) sleep(AI_CALL_DELAY_MS);
 
             try {
@@ -105,7 +102,7 @@ public class ScraperService {
                         job.getTitle(), job.getSource(), score);
 
                 if (score >= MATCH_THRESHOLD) {
-                    persistAndNotify(job, analysis, score);
+                    persistAndNotify(job, analysis, score, telegramChatId);
                 } else {
                     job.setScrapedAt(LocalDateTime.now());
                     jobRepository.save(job);
@@ -121,46 +118,7 @@ public class ScraperService {
             }
             processed++;
         }
-
         log.info("Job hunt complete. Processed {} / {} jobs.", processed, allJobs.size());
-    }
-
-    private void persistAndNotify(Job job, String analysis, int score) {
-        try {
-            job.setScrapedAt(LocalDateTime.now());
-            job.setScore(score);
-            job.setAnalysis(analysis);
-            job.setAlerted(true);
-            jobRepository.save(job);
-
-            String content = job.getTitle() + "\n" + job.getDescription();
-            Document doc = new Document(
-                    content,
-                    Map.of(
-                            "title",    job.getTitle(),
-                            "url",      job.getUrl(),
-                            "analysis", analysis,
-                            "score",    String.valueOf(score),
-                            "source",   job.getSource() != null ? job.getSource() : "LinkedIn"
-                    )
-            );
-            vectorStore.add(List.of(doc));
-
-            telegramService.sendjobAlert(
-                    job.getTitle(),
-                    job.getSource() != null ? job.getSource() : "LinkedIn",
-                    String.valueOf(score),
-                    job.getUrl()
-            );
-
-            log.info("Saved and notified: {} (score {}) from {}",
-                    job.getTitle(), score, job.getSource());
-
-            persistAndNotify(job, analysis, score, telegramChatId);
-
-        } catch (Exception e) {
-            log.error("Failed to persist/notify job '{}': {}", job.getTitle(), e.getMessage());
-        }
     }
 
     private int parseScore(String analysis) {
@@ -190,11 +148,11 @@ public class ScraperService {
 
             String content = job.getTitle() + "\n" + job.getDescription();
             Document doc = new Document(content, Map.of(
-                    "title", job.getTitle(),
-                    "url", job.getUrl(),
+                    "title",    job.getTitle(),
+                    "url",      job.getUrl(),
                     "analysis", analysis,
-                    "score", String.valueOf(score),
-                    "source", job.getSource() != null ? job.getSource() : "LinkedIn"
+                    "score",    String.valueOf(score),
+                    "source",   job.getSource() != null ? job.getSource() : "LinkedIn"
             ));
             vectorStore.add(List.of(doc));
 

@@ -14,11 +14,12 @@ import java.util.Optional;
 public interface JobRepository extends MongoRepository<Job, String> {
 
     List<Job> findAll();
-
     List<Job> findByTitle(String title);
-
     Optional<Job> findByUrl(String url);
 
-    @Query("{ 'matchScore' : { $gte : ?0 } }")
-    List<Job> findHighQualityMatches(double minScore);
+    @Query("{ 'score' : { $gte : ?0 } }")
+    List<Job> findHighQualityMatches(int minScore);
+
+    @Query("{ 'alerted' : true }")
+    List<Job> findAlertedJobs();
 }

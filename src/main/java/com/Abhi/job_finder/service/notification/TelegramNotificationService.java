@@ -1,14 +1,15 @@
 package com.Abhi.job_finder.service.notification;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import static com.Abhi.job_finder.service.scraper.ScraperService.log;
-
-
 @Service
 public class TelegramNotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(TelegramNotificationService.class);
 
     @Value("${telegram.bot.token}")
     private String botToken;
@@ -41,7 +42,7 @@ public class TelegramNotificationService {
             org.springframework.http.HttpEntity<String> entity =
                     new org.springframework.http.HttpEntity<>(body, headers);
             restTemplate.postForObject(telegramUrl, entity, String.class);
-            log.info("📲 Telegram notification sent to chat {} for: {}", targetChatId, jobTitle);
+            log.info("📲 Telegram sent to chat {} for: {}", targetChatId, jobTitle);
         } catch (Exception e) {
             log.error("❌ Failed to send Telegram alert: {}", e.getMessage());
         }

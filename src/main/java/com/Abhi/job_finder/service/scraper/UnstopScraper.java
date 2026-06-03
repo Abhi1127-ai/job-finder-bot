@@ -1,11 +1,13 @@
 package com.Abhi.job_finder.service.scraper;
 
 import com.Abhi.job_finder.model.Job;
-import com.microsoft.playwright.*;
-import com.microsoft.playwright.options.WaitUntilState;
-import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,64 +16,67 @@ import java.util.List;
 public class UnstopScraper {
 
     private static final Logger log = LoggerFactory.getLogger(UnstopScraper.class);
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public List<Job> scrapeJobs(String jobTitle) {
         List<Job> jobs = new ArrayList<>();
 
-        try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(
-                     new BrowserType.LaunchOptions()
-                             .setHeadless(false)
-                             .setSlowMo(500));
-             BrowserContext context = browser.newContext(
-                     new Browser.NewContextOptions()
-                             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
-             )) {
+        try {
+            String url = "https://unstop.com/api/public/opportunity/search-result?opportunity=jobs"
+                    + "&keyword=" + jobTitle.replace(" ", "%20")
+                    + "&status=open&per_page=10&page=1";
 
-            Page page = context.newPage();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36");
+            headers.set("Accept", "application/json");
+            headers.set("Referer", "https://unstop.com/");
 
-            String searchUrl = "https://unstop.com/job?oppstatus=open&searchTerm="
-                    + jobTitle.replace(" ", "%20");
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            log.info("Navigating to Unstop: {}", searchUrl);
+            log.info("Calling Unstop API for: {}", jobTitle);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-            page.navigate(searchUrl,
-                    new Page.NavigateOptions()
-                            .setTimeout(60000)
-                            .setWaitUntil(WaitUntilState.NETWORKIDLE));
+            if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+                log.warn("Unstop API returned: {}", response.getStatusCode());
+                return jobs;
+            }
 
-            page.waitForSelector("un-opportunity-card, .opportunity_card, .card_holder",
-                    new Page.WaitForSelectorOptions().setTimeout(30000));
+            JsonNode root = mapper.readTree(response.getBody());
 
-            scrollPage(page);
-            Locator cards = page.locator("un-opportunity-card, .opportunity_card, .card_holder");
-            int total = Math.min(cards.count(), 10);
-            log.info("Found {} job cards on Unstop", total);
+            // Unstop API response: data.data[] array of opportunities
+            JsonNode items = root.path("data").path("data");
 
-            for (int i = 0; i < total; i++) {
+            if (!items.isArray()) {
+                log.warn("Unstop API response structure unexpected: {}", root.toString().substring(0, Math.min(200, root.toString().length())));
+                return jobs;
+            }
+
+            log.info("Unstop API returned {} jobs", items.size());
+
+            for (JsonNode item : items) {
                 try {
-                    Locator card = cards.nth(i);
-                    card.scrollIntoViewIfNeeded();
+                    String title   = item.path("title").asText("").strip();
+                    String company = item.path("organisation").path("name").asText(
+                            item.path("org_name").asText("Unstop")).strip();
+                    int id         = item.path("id").asInt();
+                    String slug    = item.path("seo_url").asText("");
+                    String jobUrl  = slug.isEmpty()
+                            ? "https://unstop.com/jobs/" + id
+                            : "https://unstop.com/" + slug;
 
-                    String jobUrl = card.locator("a").first().getAttribute("href");
-                    if (jobUrl == null) continue;
-                    if (!jobUrl.startsWith("http")) jobUrl = "https://unstop.com" + jobUrl;
-                    Page jobPage = context.newPage();
-                    jobPage.navigate(jobUrl,
-                            new Page.NavigateOptions()
-                                    .setTimeout(30000)
-                                    .setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    // Build description from available fields
+                    StringBuilder desc = new StringBuilder();
+                    appendIfPresent(desc, "About", item.path("description").asText(""));
+                    appendIfPresent(desc, "Eligibility", item.path("eligibility").asText(""));
+                    appendIfPresent(desc, "Skills", item.path("skills_required").asText(""));
+                    appendIfPresent(desc, "Location", item.path("city").asText(""));
+                    appendIfPresent(desc, "Stipend", item.path("salary").asText(""));
 
-                    humanDelay(jobPage, 2000, 3000);
+                    String description = desc.toString().strip();
 
-                    String title       = extractTitle(jobPage);
-                    String description = extractDescription(jobPage);
-                    String company     = extractCompany(jobPage);
-
-                    jobPage.close();
-
-                    if (description == null || description.length() < 50) {
-                        log.warn("Unstop job {} has no usable description — skipping", i);
+                    if (title.isBlank() || description.length() < 30) {
+                        log.warn("Unstop job {} skipped — insufficient data", id);
                         continue;
                     }
 
@@ -84,97 +89,23 @@ public class UnstopScraper {
                     job.setSource("Unstop");
                     jobs.add(job);
 
-                    log.info("Scraped Unstop job [{}]: {} at {}", i, title, company);
+                    log.info("Unstop job: {} at {}", title, company);
 
                 } catch (Exception e) {
-                    log.error("Failed to extract Unstop job at index {}: {}", i, e.getMessage());
+                    log.error("Failed to parse Unstop job: {}", e.getMessage());
                 }
             }
 
         } catch (Exception e) {
-            log.error("Unstop scraper failed: {}", e.getMessage(), e);
+            log.error("Unstop API scraper failed: {}", e.getMessage(), e);
         }
 
         return jobs;
     }
 
-    private void scrollPage(Page page) {
-        try {
-            page.evaluate(
-                    "() => {" +
-                            "  let scrolled = 0;" +
-                            "  const interval = setInterval(() => {" +
-                            "    window.scrollBy(0, 400);" +
-                            "    scrolled++;" +
-                            "    if (scrolled >= 6) clearInterval(interval);" +
-                            "  }, 800);" +
-                            "}"
-            );
-            page.waitForTimeout(6000);
-        } catch (Exception e) {
-            log.warn("Scroll failed (non-fatal): {}", e.getMessage());
+    private void appendIfPresent(StringBuilder sb, String label, String value) {
+        if (value != null && !value.isBlank() && !value.equals("null")) {
+            sb.append(label).append(": ").append(value).append("\n");
         }
-    }
-
-    private String extractTitle(Page page) {
-        String[] selectors = {
-                ".opportunity-title",
-                ".title_bar h1",
-                ".job_details h1",
-                "h1"
-        };
-        for (String selector : selectors) {
-            try {
-                Locator el = page.locator(selector).first();
-                if (el.count() > 0) {
-                    String text = el.innerText().strip();
-                    if (!text.isBlank()) return text;
-                }
-            } catch (Exception ignored) {}
-        }
-        return page.title().replaceAll("\\s*[-|].*$", "").strip();
-    }
-
-    private String extractDescription(Page page) {
-        String[] selectors = {
-                ".job-description",
-                ".description_container",
-                ".about_section",
-                ".single_detail_wrapper"
-        };
-        for (String selector : selectors) {
-            try {
-                Locator el = page.locator(selector).first();
-                if (el.count() > 0) {
-                    String text = el.innerText().strip();
-                    if (text.length() > 50) return text;
-                }
-            } catch (Exception ignored) {}
-        }
-        try {
-            return page.locator("body").innerText().strip();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String extractCompany(Page page) {
-        String[] selectors = {
-                ".company_name",
-                ".org_name",
-                ".recruiter_name"
-        };
-        for (String selector : selectors) {
-            try {
-                Locator el = page.locator(selector).first();
-                if (el.count() > 0) return el.innerText().strip();
-            } catch (Exception ignored) {}
-        }
-        return "Unstop";
-    }
-
-    private void humanDelay(Page page, int minMillis, int maxMillis) {
-        int delay = (int) (Math.random() * (maxMillis - minMillis)) + minMillis;
-        page.waitForTimeout(delay);
     }
 }

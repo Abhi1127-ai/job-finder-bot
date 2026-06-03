@@ -7,9 +7,7 @@ import java.util.List;
 @Component
 @ConfigurationProperties(prefix = "job")
 public class JobDomainsConfig {
-
     private List<JobDomain> domains;
-    public List<JobDomain> getDomains() { return domains;}
-    public void setDomains(List<JobDomain> domains) { this.domains = domains;}
-
+    public List<JobDomain> getDomains() { return domains; }
+    public void setDomains(List<JobDomain> domains) { this.domains = domains; }
 }

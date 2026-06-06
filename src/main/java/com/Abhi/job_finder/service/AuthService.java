@@ -30,9 +30,10 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setName(request.getName());
         userRepository.save(user);
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
-        return new AuthResponse(token, user.getEmail(), user.getRole());
+        return new AuthResponse(token, user.getEmail(), user.getRole(), user.getName());
     }
 
     public AuthResponse login(AuthRequest request) {
@@ -42,6 +43,6 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
-        return new AuthResponse(token, user.getEmail(), user.getRole());
+        return new AuthResponse(token, user.getEmail(), user.getRole(), user.getName());
     }
 }

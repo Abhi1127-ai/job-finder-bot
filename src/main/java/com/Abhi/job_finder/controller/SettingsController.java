@@ -10,21 +10,25 @@ import java.util.Map;
 @RequestMapping("/api/settings")
 public class SettingsController {
 
+    private final Map<String, Object> settings = new HashMap<>(Map.of(
+            "jobTitle",        "java Full Stack Developer",
+            "threshold",       8,
+            "schedule",        "0 0 9 * * *",
+            "maxJobs",         10,
+            "telegramEnabled", true,
+            "dedupeEnabled",   true,
+            "resume",          ""
+    ));
+
     @GetMapping
     public ResponseEntity<Map<String, Object>> getSettings() {
-        Map<String, Object> settings = new HashMap<>();
-        settings.put("jobTitle", "java Full Stack Developer");
-        settings.put("threshold", 8);
-        settings.put("schedule", "0 0 9 * * *");
-        settings.put("maxJobs", 10);
-        settings.put("telegramEnabled", true);
-        settings.put("dedupeEnabled", true);
-        settings.put("resume", "");
         return ResponseEntity.ok(settings);
     }
 
     @PutMapping
-    public ResponseEntity<Map<String, Object>> saveSettings(@RequestBody Map<String, Object> settings) {
+    public ResponseEntity<Map<String, Object>> saveSettings(
+            @RequestBody Map<String, Object> updated) {
+        settings.putAll(updated);
         return ResponseEntity.ok(settings);
     }
 }

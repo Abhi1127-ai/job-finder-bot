@@ -27,7 +27,7 @@ public class LinkedInLogin {
             System.out.println("press ENTER to save the session.");
             System.out.println("===========================================");
 
-            new Scanner(System.in).nextLine(); // Wait for you to press Enter
+            new Scanner(System.in).nextLine();
 
             context.close();
             System.out.println("Session saved successfully!");

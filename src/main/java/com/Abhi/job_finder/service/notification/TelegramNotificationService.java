@@ -67,4 +67,31 @@ public class TelegramNotificationService {
                              String matchScore, String url) {
         sendjobAlert(jobTitle, company, matchScore, url, defaultChatId);
     }
+
+    public void sendPrepRoadmap(String jobTitle, String roadmap, String chatId) {
+        if (roadmap == null || roadmap.isBlank()) return;
+
+        String targetChatId = (chatId != null && !chatId.isBlank()) ? chatId : defaultChatId;
+        String message = String.format(
+                "🎯 *Interview Prep for:* %s\n\n%s",
+                jobTitle, roadmap
+        );
+
+        try {
+            String telegramUrl = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            String body = String.format(
+                    "{\"chat_id\":\"%s\",\"text\":\"%s\",\"parse_mode\":\"Markdown\"}",
+                    targetChatId,
+                    message.replace("\"", "\\\"").replace("\n", "\\n")
+            );
+            org.springframework.http.HttpEntity<String> entity =
+                    new org.springframework.http.HttpEntity<>(body, headers);
+            restTemplate.postForObject(telegramUrl, entity, String.class);
+            log.info("📚 Prep roadmap sent for: {}", jobTitle);
+        } catch (Exception e) {
+            log.error("❌ Failed to send prep roadmap: {}", e.getMessage());
+        }
+    }
 }

@@ -32,4 +32,6 @@ public class Job {
     private boolean        alerted;
     private LocalDateTime  scrapedAt;
     private List<Double> embedding;
+
+    private String prep;
 }

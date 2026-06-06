@@ -3,9 +3,10 @@ package com.Abhi.job_finder.service.scraper;
 import com.Abhi.job_finder.model.Job;
 import com.Abhi.job_finder.repository.JobRepository;
 import com.Abhi.job_finder.service.ai.JobMatchService;
+import com.Abhi.job_finder.service.ai.JobPrepService;
 import com.Abhi.job_finder.service.notification.TelegramNotificationService;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
+//import org.springframework.ai.document.Document;
+//import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+//import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,26 +32,29 @@ public class ScraperService {
     private final JobRepository jobRepository;
     private final LinkedInScraper linkedInScraper;
     private final JobMatchService jobMatchService;
-    private final VectorStore vectorStore;
+//    private final VectorStore vectorStore;
     private final TelegramNotificationService telegramService;
     private final UnstopScraper unstopScraper;
+    private final JobPrepService jobPrepService;
 
     public ScraperService(
             InternshalaScaper internshalaScaper,
             LinkedInScraper linkedInScraper,
             JobMatchService jobMatchService,
-            VectorStore vectorStore,
+//            VectorStore vectorStore,
             JobRepository jobRepository,
             TelegramNotificationService telegramService,
-            UnstopScraper unstopScraper) {
+            UnstopScraper unstopScraper,
+            JobPrepService jobPrepService) {
 
         this.internshalaScaper = internshalaScaper;
         this.linkedInScraper   = linkedInScraper;
         this.jobMatchService   = jobMatchService;
-        this.vectorStore       = vectorStore;
+//        this.vectorStore       = vectorStore;
         this.jobRepository     = jobRepository;
         this.telegramService   = telegramService;
         this.unstopScraper     = unstopScraper;
+        this.jobPrepService    = jobPrepService;
     }
 
     public void runJobHunt(String jobTitle, String myResume, String telegramChatId) {
@@ -146,16 +150,18 @@ public class ScraperService {
             job.setAlerted(true);
             jobRepository.save(job);
 
-            String content = job.getTitle() + "\n" + job.getDescription();
-            Document doc = new Document(content, Map.of(
-                    "title",    job.getTitle(),
-                    "url",      job.getUrl(),
-                    "analysis", analysis,
-                    "score",    String.valueOf(score),
-                    "source",   job.getSource() != null ? job.getSource() : "LinkedIn"
-            ));
-            vectorStore.add(List.of(doc));
+            // vector store
+//            String content = job.getTitle() + "\n" + job.getDescription();
+//            Document doc = new Document(content, Map.of(
+//                    "title",    job.getTitle(),
+//                    "url",      job.getUrl(),
+//                    "analysis", analysis,
+//                    "score",    String.valueOf(score),
+//                    "source",   job.getSource() != null ? job.getSource() : "LinkedIn"
+//            ));
+//            vectorStore.add(List.of(doc));
 
+            // send job alert
             telegramService.sendjobAlert(
                     job.getTitle(),
                     job.getSource() != null ? job.getSource() : "LinkedIn",
@@ -163,6 +169,24 @@ public class ScraperService {
                     job.getUrl(),
                     telegramChatId
             );
+
+            // generate and send prep roadmap
+            try {
+                String roadmap = jobPrepService.generatePrepRoadmap(
+                        job.getTitle(),
+                        job.getDescription(),
+                        "Expert Java Spring Boot developer with experience in MongoDB, " +
+                                "MySQL, Playwright, microservices, and AI integration."
+                );
+                if (roadmap != null) {
+                    job.setPrep(roadmap);
+                    jobRepository.save(job); // update with prep
+                    telegramService.sendPrepRoadmap(job.getTitle(), roadmap, telegramChatId);
+                }
+            } catch (Exception e) {
+                log.warn("Prep roadmap generation failed for '{}' — skipping: {}",
+                        job.getTitle(), e.getMessage());
+            }
 
             log.info("✅ Saved and notified: {} (score {}) → channel {}",
                     job.getTitle(), score, telegramChatId);

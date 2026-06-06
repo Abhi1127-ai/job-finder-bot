@@ -26,8 +26,9 @@ public class JobBotScheduler {
         this.domainsConfig  = domainsConfig;
     }
 
-//    @Scheduled(cron = "0 0 9 * * *")
-    @Scheduled(cron = "0 */5 * * * *")
+
+//@Scheduled(cron = "0 0 9 * * *")
+@Scheduled(cron = "0 */5 * * * *")
     public void runDailyJobHunt() {
         log.info("=== Daily Job Hunt Started at {} ===", java.time.LocalDateTime.now());
 
@@ -43,7 +44,6 @@ public class JobBotScheduler {
                 log.error("Domain '{}' failed: {}", domain.getTitle(), e.getMessage());
             }
         }
-
         log.info("=== Daily Job Hunt Complete ===");
     }
 }

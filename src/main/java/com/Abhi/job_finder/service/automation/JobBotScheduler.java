@@ -27,8 +27,7 @@ public class JobBotScheduler {
     }
 
 
-//@Scheduled(cron = "0 0 9 * * *")
-@Scheduled(cron = "0 */5 * * * *")
+@Scheduled(cron = "0 0 9 * * *")
     public void runDailyJobHunt() {
         log.info("=== Daily Job Hunt Started at {} ===", java.time.LocalDateTime.now());
 

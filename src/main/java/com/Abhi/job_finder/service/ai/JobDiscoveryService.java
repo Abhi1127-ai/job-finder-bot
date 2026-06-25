@@ -21,7 +21,7 @@ public class JobDiscoveryService {
                 SearchRequest.builder()
                         .query(query)
                         .topK(5)
-                        .similarityThreshold(0.7)  // optional
+                        .similarityThreshold(0.7)
                         .build()
 
         );

@@ -170,7 +170,6 @@ public class ScraperService {
                     telegramChatId
             );
 
-            // generate and send prep roadmap
             try {
                 String roadmap = jobPrepService.generatePrepRoadmap(
                         job.getTitle(),
@@ -180,7 +179,7 @@ public class ScraperService {
                 );
                 if (roadmap != null) {
                     job.setPrep(roadmap);
-                    jobRepository.save(job); // update with prep
+                    jobRepository.save(job);
                     telegramService.sendPrepRoadmap(job.getTitle(), roadmap, telegramChatId);
                 }
             } catch (Exception e) {

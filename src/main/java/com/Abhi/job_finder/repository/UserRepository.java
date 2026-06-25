@@ -5,5 +5,9 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.Optional;
 
 public interface UserRepository extends MongoRepository<User, String> {
+    Optional<User> findByLinkingCodeAndLinkingCodeExpiryAfter(String linkingCode, LocalDateTime now);
+
     Optional<User> findByEmail(String email);
+
+    Optional<User> findByTelegramChatId(String telegramChatId);
 }

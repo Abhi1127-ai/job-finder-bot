@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 public class UserService {
@@ -55,5 +56,9 @@ public class UserService {
 
     public Optional<User> findByLinkingCode(String code) {
         return userRepository.findByLinkingCodeAndLinkingCodeExpiryAfter(code, LocalDateTime.now());
+    }
+
+    public User save(User user) {
+        return userRepository.save(user);
     }
 }

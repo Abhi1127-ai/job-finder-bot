@@ -4,7 +4,6 @@ import com.Abhi.job_finder.dto.RegisterRequest;
 import com.Abhi.job_finder.dto.RegisterResponse;
 import com.Abhi.job_finder.model.User;
 import com.Abhi.job_finder.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

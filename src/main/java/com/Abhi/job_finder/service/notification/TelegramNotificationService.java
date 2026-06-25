@@ -56,16 +56,43 @@ public class TelegramNotificationService {
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
             restTemplate.postForObject(telegramUrl, entity, String.class);
-            log.info("📲 Telegram sent to chat {} for: {}", targetChatId, jobTitle);
+            log.info(" Telegram sent to chat {} for: {}", targetChatId, jobTitle);
 
         } catch (Exception e) {
-            log.error("❌ Failed to send Telegram alert: {}", e.getMessage());
+            log.error(" Failed to send Telegram alert: {}", e.getMessage());
         }
     }
 
     public void sendjobAlert(String jobTitle, String company,
                              String matchScore, String url) {
         sendjobAlert(jobTitle, company, matchScore, url, defaultChatId);
+    }
+
+    public void sendMessage(String chatId, String text) {
+        if (chatId == null || chatId.isBlank()) {
+            log.warn("No Telegram chat ID provided — skipping message: {}", text);
+            return;
+        }
+
+        try {
+            String telegramUrl = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String body = String.format(
+                    "{\"chat_id\":\"%s\",\"text\":\"%s\",\"parse_mode\":\"Markdown\"}",
+                    chatId,
+                    text.replace("\"", "\\\"").replace("\n", "\\n")
+            );
+
+            HttpEntity<String> entity = new HttpEntity<>(body, headers);
+            restTemplate.postForObject(telegramUrl, entity, String.class);
+            log.info("Telegram message sent to chat {}", chatId);
+
+        } catch (Exception e) {
+            log.error("Failed to send Telegram message: {}", e.getMessage());
+        }
     }
 
     public void sendPrepRoadmap(String jobTitle, String roadmap, String chatId) {
@@ -91,7 +118,7 @@ public class TelegramNotificationService {
             restTemplate.postForObject(telegramUrl, entity, String.class);
             log.info("📚 Prep roadmap sent for: {}", jobTitle);
         } catch (Exception e) {
-            log.error("❌ Failed to send prep roadmap: {}", e.getMessage());
+            log.error(" Failed to send prep roadmap: {}", e.getMessage());
         }
     }
 }

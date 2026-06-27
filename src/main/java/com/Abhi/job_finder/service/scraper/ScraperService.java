@@ -109,6 +109,7 @@ public class ScraperService {
                     persistAndNotify(job, analysis, score, telegramChatId);
                 } else {
                     job.setScrapedAt(LocalDateTime.now());
+                    job.setScore(score);
                     jobRepository.save(job);
                     log.info("Saved (low match {}): {}", score, job.getTitle());
                 }

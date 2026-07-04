@@ -1,75 +1,79 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import './Sidebar.css';
+import { NavLink, useNavigate } from "react-router-dom";
+import "./Sidebar.css";
 
-const navItems = [
-    { to: '/',         icon: 'ti-layout-dashboard', label: 'Dashboard' },
-    { to: '/jobs',     icon: 'ti-briefcase',         label: 'Jobs'      },
-    { to: '/alerts',   icon: 'ti-bell',              label: 'Alerts'    },
+const nav = [
+    {
+        section: "Main",
+        items: [
+            { label: "Dashboard", to: "/" },
+            { label: "Jobs", to: "/jobs" },
+            { label: "Alerts", to: "/alerts" },
+        ],
+    },
+    {
+        section: "Config",
+        items: [
+            { label: "Settings", to: "/settings" },
+            { label: "Resume", to: "/resume" },
+        ],
+    },
 ];
 
-const configItems = [
-    { to: '/settings', icon: 'ti-settings',  label: 'Settings' },
-    { to: '/resume',   icon: 'ti-file-text', label: 'Resume'   },
-];
-
-export default function Sidebar({ jobCount }) {
-    const { user, logout } = useAuth();
+export default function Sidebar() {
     const navigate = useNavigate();
 
-    const handleLogout = () => { logout(); navigate('/login'); };
-    const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
+    const raw = localStorage.getItem("user");
+    const user = raw ? JSON.parse(raw) : null;
+    const name = user?.name ?? "User";
+    const email = user?.email ?? "";
+    const initials = name
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+    };
 
     return (
         <aside className="sidebar">
-            <div className="sidebar-logo">
-                <div className="logo-icon"><i className="ti ti-robot" /></div>
-                <div>
-                    <div className="logo-name">JobFinder</div>
-                    <div className="logo-sub">AI Bot</div>
-                </div>
-            </div>
+            <div className="sb-brand">Job Finder AI</div>
 
-            <nav className="sidebar-nav">
-                <div className="nav-section-label">Main</div>
-                {navItems.map(item => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end={item.to === '/'}
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <i className={`ti ${item.icon}`} />
-                        {item.label}
-                        {item.label === 'Jobs' && jobCount > 0 && (
-                            <span className="nav-badge">{jobCount}</span>
-                        )}
-                    </NavLink>
-                ))}
-
-                <div className="nav-section-label" style={{ marginTop: 16 }}>Config</div>
-                {configItems.map(item => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <i className={`ti ${item.icon}`} />
-                        {item.label}
-                    </NavLink>
+            <nav className="sb-nav">
+                {nav.map((group) => (
+                    <div key={group.section} className="sb-group">
+                        <div className="sb-section">{group.section}</div>
+                        {group.items.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                end={item.to === "/"}
+                                className={({ isActive }) =>
+                                    isActive ? "sb-item active" : "sb-item"
+                                }
+                            >
+                                {item.label}
+                            </NavLink>
+                        ))}
+                    </div>
                 ))}
             </nav>
 
-            <div className="sidebar-footer">
-                <div className="user-chip">
-                    <div className="avatar">{initials}</div>
-                    <div className="user-info">
-                        <div className="user-name">{user?.name || 'User'}</div>
-                        <div className="user-email">{user?.email || ''}</div>
+            <div className="sb-bottom">
+                <div className="sb-user">
+                    <div className="sb-avatar">{initials}</div>
+                    <div className="sb-user-info">
+                        <div className="sb-user-name">{name}</div>
+                        <div className="sb-user-email">{email}</div>
                     </div>
                 </div>
-                <button className="logout-btn" onClick={handleLogout} title="Logout">
-                    <i className="ti ti-logout" />
+                <button className="sb-logout" onClick={handleLogout}>
+                    Sign out
                 </button>
             </div>
         </aside>

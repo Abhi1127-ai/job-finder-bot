@@ -1,165 +1,172 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { fetchStats, fetchJobs, triggerHunt } from '../api/endpoints';
-import '../components/Layout.css';
-import './Dashboard.css';
+import { useState, useEffect } from "react";
+import api from "../api/axios";
+import "./DashBoard.css";
 
-function StatCard({ icon, label, value, delta, deltaDown }) {
-    return (
-        <div className="stat-card">
-            <div className="stat-label"><i className={`ti ${icon}`} />{label}</div>
-            <div className="stat-value">{value}</div>
-            {delta && <div className={`stat-delta ${deltaDown ? 'down' : ''}`}>{delta}</div>}
-        </div>
-    );
-}
+const DOMAINS = [
+    { name: "Java Full Stack",    channel: "@fullstack_devolopment", link: "https://t.me/fullstack_devolopment" },
+    { name: "Backend Java",       channel: "@beckend_development",   link: "https://t.me/beckend_development" },
+    { name: "Python Data Analyst",channel: "@dataanal_dev",          link: "https://t.me/dataanal_dev" },
+    { name: "ML AI Engineer",     channel: "@aiml_engjobs",          link: "https://t.me/aiml_engjobs" },
+    { name: "Web Developer",      channel: "@webdev_jobsss",         link: "https://t.me/webdev_jobsss" },
+];
 
-function scoreClass(s) {
-    if (s >= 9) return 'score-high';
-    if (s >= 7) return 'score-blue';
-    if (s >= 5) return 'score-mid';
-    return 'score-low';
-}
-
-function scoreBadge(s) {
-    if (s >= 9) return 'badge badge-green';
-    if (s >= 7) return 'badge badge-blue';
-    if (s >= 5) return 'badge badge-amber';
-    return 'badge badge-red';
-}
-
-function scoreBadgeLabel(s) {
-    if (s >= 9) return 'Excellent';
-    if (s >= 7) return 'Good';
-    if (s >= 5) return 'Average';
-    return 'Low';
-}
-
-export default function Dashboard() {
-    const [stats, setStats]     = useState(null);
-    const [jobs, setJobs]       = useState([]);
+export default function DashBoard() {
+    const [stats, setStats]   = useState(null);
+    const [jobs, setJobs]     = useState([]);
     const [running, setRunning] = useState(false);
-    const [runMsg, setRunMsg]   = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError]   = useState("");
 
-    useEffect(() => {
-        fetchStats().then(r => setStats(r.data)).catch(() => {});
-        fetchJobs({ limit: 5, sort: 'score' }).then(r => setJobs(r.data)).catch(() => {});
-    }, []);
+    useEffect(() => { fetchData(); }, []);
 
-    const handleRun = async () => {
-        setRunning(true);
-        setRunMsg('');
+    const fetchData = async () => {
+        setLoading(true);
+        setError("");
         try {
-            await triggerHunt();
-            setRunMsg('Job hunt started! Results will appear shortly.');
-            setTimeout(() => {
-                fetchStats().then(r => setStats(r.data)).catch(() => {});
-                fetchJobs({ limit: 5, sort: 'score' }).then(r => setJobs(r.data)).catch(() => {});
-                setRunMsg('');
-            }, 8000);
+            const [statsRes, jobsRes] = await Promise.all([
+                api.get("/api/jobs/stats"),
+                api.get("/api/jobs?limit=5&sort=score"),
+            ]);
+            setStats(statsRes.data);
+            setJobs(jobsRes.data);
         } catch {
-            setRunMsg('Failed to trigger — check your Gemini quota.');
+            setError("Failed to load dashboard data.");
         } finally {
-            setRunning(false);
+            setLoading(false);
         }
     };
 
-    const lastRun = stats?.lastRunAt
-        ? new Date(stats.lastRunAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })
-        : '—';
+    const handleRunNow = async () => {
+        setRunning(true);
+        try {
+            await api.post("/api/jobs/hunt");
+            await fetchData();
+        } catch { /* long-running call may timeout — that's fine */ }
+        finally { setRunning(false); }
+    };
+
+    const scoreClass = (s) => s >= 8 ? "score-badge score-high" : "score-badge score-mid";
 
     return (
-        <div className="page">
-            <div className="topbar">
-                <div className="topbar-left">
-                    <div className="page-title">Dashboard</div>
-                    <div className="page-sub">Last run: {lastRun}</div>
-                </div>
-                <div className="topbar-right">
-                    <div className="status-pill">
-                        <div className="status-dot" />
-                        <span>Quota OK</span>
-                    </div>
-                    <button className="btn-primary" onClick={handleRun} disabled={running}>
-                        <i className={`ti ${running ? 'ti-loader-2 spin' : 'ti-player-play'}`} />
-                        {running ? 'Running...' : 'Run now'}
+        <div className="dash-content">
+            <div className="dash-topbar">
+                <div className="dash-title">Dashboard</div>
+                <div className="dash-topbar-right">
+                    <span className="status-dot" />
+                    <span className="status-label">Next run: 9:00 AM IST</span>
+                    <button className="run-btn" onClick={handleRunNow} disabled={running}>
+                        {running ? "Running..." : "Run now"}
                     </button>
                 </div>
             </div>
 
-            <div className="page-content">
-                {runMsg && (
-                    <div className={`run-banner ${runMsg.includes('Failed') ? 'run-banner-error' : 'run-banner-ok'}`}>
-                        <i className={`ti ${runMsg.includes('Failed') ? 'ti-alert-circle' : 'ti-circle-check'}`} />
-                        {runMsg}
-                    </div>
-                )}
+            {error && <div className="dash-error">{error}</div>}
 
-                <div className="stats-grid">
-                    <StatCard icon="ti-database"  label="Jobs scraped"  value={stats?.totalToday ?? '—'} delta="today's run" />
-                    <StatCard icon="ti-star"      label="High matches"  value={stats?.highMatches ?? '—'} delta="score ≥ 8" />
-                    <StatCard icon="ti-send"      label="Alerts sent"   value={stats?.alertsSent ?? '—'}  delta="via Telegram" />
-                    <StatCard icon="ti-clock"     label="Next run"      value="9:00 AM" delta="daily · IST" />
-                </div>
-
-                <div className="section-header">
-                    <div className="section-title">Top matches today</div>
-                    <Link to="/jobs" className="section-link">View all <i className="ti ti-arrow-right" /></Link>
-                </div>
-
-                <div className="recent-jobs-table">
-                    <div className="rjt-head">
-                        <div className="th">Job</div>
-                        <div className="th">Score</div>
-                        <div className="th">Status</div>
-                        <div className="th">Link</div>
-                    </div>
-                    {jobs.length === 0 ? (
-                        <div className="empty-row">No jobs yet — hit Run now or wait for tomorrow's 9 AM run.</div>
-                    ) : jobs.slice(0, 5).map(job => (
-                        <div className="rjt-row" key={job.id}>
-                            <div className="rjt-info">
-                                <div className="rjt-title">{job.title}</div>
-                                <div className="rjt-company">{job.company || 'LinkedIn'}</div>
-                            </div>
-                            <div className="rjt-score">
-                                <span className={`score-num ${scoreClass(job.score)}`}>{job.score}</span>
-                                <div className="mini-bar">
-                                    <div className="mini-fill" style={{ width: `${job.score * 10}%`, background: job.score >= 8 ? '#639922' : job.score >= 6 ? '#378ADD' : '#EF9F27' }} />
-                                </div>
-                            </div>
-                            <div><span className={scoreBadge(job.score)}>{scoreBadgeLabel(job.score)}</span></div>
-                            <div><a href={job.url} target="_blank" rel="noreferrer" className="apply-link"><i className="ti ti-external-link" />Apply</a></div>
+            {loading ? (
+                <div className="dash-loading">Loading...</div>
+            ) : (
+                <div className="dash-body">
+                    {/* ── Metrics ── */}
+                    <div className="metrics">
+                        <div className="metric">
+                            <div className="metric-label">Jobs scraped</div>
+                            <div className="metric-value">{stats?.totalJobs ?? 0}</div>
+                            <div className="metric-sub up">+{stats?.todayJobs ?? 0} today</div>
                         </div>
-                    ))}
-                </div>
+                        <div className="metric">
+                            <div className="metric-label">High matches</div>
+                            <div className="metric-value">{stats?.highMatches ?? 0}</div>
+                            <div className="metric-sub">Score &gt;= 8</div>
+                        </div>
+                        <div className="metric">
+                            <div className="metric-label">Alerts sent</div>
+                            <div className="metric-value">{stats?.alertsSent ?? 0}</div>
+                            <div className="metric-sub">via Telegram</div>
+                        </div>
+                        <div className="metric">
+                            <div className="metric-label">Active domains</div>
+                            <div className="metric-value">5</div>
+                            <div className="metric-sub">Daily 9:00 AM</div>
+                        </div>
+                    </div>
 
-                <div className="bottom-grid">
-                    <div className="card">
-                        <div className="card-title">Recent alerts</div>
-                        {(stats?.recentAlerts || []).length === 0 ? (
-                            <div className="empty-mini">No alerts sent yet.</div>
-                        ) : (stats?.recentAlerts || []).map((a, i) => (
-                            <div className="alert-item" key={i}>
-                                <div className="alert-icon"><i className="ti ti-send" /></div>
-                                <div>
-                                    <div className="alert-title">{a.title}</div>
-                                    <div className="alert-meta">Score {a.score}/10 · {a.sentAt}</div>
+                    {/* ── Top matches ── */}
+                    <div className="section-header">
+                        <div className="section-title">Top matches today</div>
+                        <a className="view-all" href="/jobs">View all</a>
+                    </div>
+
+                    <div className="table-wrap">
+                        <table className="jobs-table">
+                            <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Platform</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {jobs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="jobs-empty">
+                                        No jobs yet — hit Run now or wait for tomorrow's 9 AM run.
+                                    </td>
+                                </tr>
+                            ) : (
+                                jobs.map((job) => (
+                                    <tr key={job.id ?? job._id ?? job.url}>
+                                        <td>
+                                            <a className="job-link" href={job.url} target="_blank" rel="noreferrer">
+                                                {job.title}
+                                            </a>
+                                        </td>
+                                        <td><span className="platform-tag">{job.source ?? "LinkedIn"}</span></td>
+                                        <td><span className={scoreClass(job.score)}>{job.score}/10</span></td>
+                                        <td>
+                                            {job.alerted ? (
+                                                <><span className="alerted-dot" /><span className="alerted-label">Alerted</span></>
+                                            ) : (
+                                                <><span className="saved-dot" /><span className="saved-label">Saved</span></>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* ── Active domains ── */}
+                    <div className="section-header">
+                        <div className="section-title">Active domains</div>
+                    </div>
+                    <div className="domains-grid">
+                        {DOMAINS.map((d) => {
+                            const count = stats?.domainCounts?.[d.channel] ?? 0;
+                            return (
+                                <div className="domain-card" key={d.channel}>
+                                    <div className="domain-info">
+                                        <div className="domain-name">{d.name}</div>
+                                        <div className="domain-channel">{d.channel}</div>
+                                    </div>
+                                    <div className="domain-right">
+                                        <div className="domain-count">{count}</div>
+                                        <a
+                                            className="tg-join-btn"
+                                            href={d.link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            Join
+                                        </a>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="card">
-                        <div className="card-title">Bot activity</div>
-                        <div className="activity-row"><span>Last run</span><strong>{lastRun}</strong></div>
-                        <div className="activity-row"><span>Schedule</span><strong>Daily 9:00 AM IST</strong></div>
-                        <div className="activity-row"><span>Search query</span><strong>{stats?.jobTitle || '—'}</strong></div>
-                        <div className="activity-row"><span>Alert threshold</span><strong>Score ≥ {stats?.threshold || 8}</strong></div>
-                        <div className="activity-row"><span>Total in DB</span><strong>{stats?.totalJobs || 0} jobs</strong></div>
+                            );
+                        })}
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
